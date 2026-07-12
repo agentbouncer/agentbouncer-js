@@ -232,14 +232,11 @@ import {
       options: VerifyRequestOptions
     ): Promise<AgentBouncerVerificationResult> {
       const verification = await this.verify(options);
-  
-      if (
-        !verification.verified ||
-        !verification.allowed
-      ) {
+    
+      if (!verification.allowed) {
         throw new AgentBouncerDeniedError(verification);
       }
-  
+    
       return verification;
     }
   }

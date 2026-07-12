@@ -1,5 +1,9 @@
 # AgentBouncer JavaScript SDK
 
+[![npm version](https://img.shields.io/npm/v/@agentbouncer/sdk.svg)](https://www.npmjs.com/package/@agentbouncer/sdk)
+[![npm downloads](https://img.shields.io/npm/dm/@agentbouncer/sdk.svg)](https://www.npmjs.com/package/@agentbouncer/sdk)
+[![license](https://img.shields.io/npm/l/@agentbouncer/sdk.svg)](./LICENSE)
+
 Official server-side SDK for verifying signed AI agent and MCP requests through AgentBouncer.
 
 ## Installation

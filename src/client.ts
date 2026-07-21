@@ -13,6 +13,8 @@ import {
     VerifyPayloadOptions,
     VerifyRequestOptions,
   } from "./types.js";
+
+  import { verifyRequestContentDigest } from "./digest.js";  
   
   const DEFAULT_VERIFY_URL =
     "https://agentbouncer.io/api/v1/verify";
@@ -22,6 +24,22 @@ import {
   function normalizeOrigin(origin: string) {
     return origin.replace(/\/+$/, "");
   }
+
+  function extractBearerToken(
+    value: string | null | undefined
+  ) {
+    if (!value) {
+      return null;
+    }
+  
+    const trimmed = value.trim();
+  
+    const match = trimmed.match(
+      /^Bearer\s+(.+)$/i
+    );
+  
+    return match?.[1]?.trim() || trimmed;
+  }  
   
   function resolveTargetUrl(params: {
     request: Request;
@@ -56,6 +74,7 @@ import {
     private readonly publicOrigin?: string;
     private readonly timeoutMs: number;
     private readonly fetchImplementation: typeof globalThis.fetch;
+    private readonly validateContentDigest: boolean;
   
     constructor(options: AgentBouncerClientOptions) {
       if (!options.apiKey?.trim()) {
@@ -75,6 +94,8 @@ import {
         options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
       this.fetchImplementation =
         options.fetch ?? globalThis.fetch;
+      this.validateContentDigest =
+        options.validateContentDigest !== false;        
   
       if (!this.fetchImplementation) {
         throw new AgentBouncerError(
@@ -89,58 +110,161 @@ import {
       options: VerifyRequestOptions
     ): Promise<AgentBouncerVerificationResult> {
       const { request } = options;
-  
+    
       const targetUrl = resolveTargetUrl({
         request,
         targetUrl: options.targetUrl,
         publicOrigin: this.publicOrigin,
       });
-  
-      const headers = collectVerificationHeaders(
-        request.headers,
-        options.headers
-      );
-  
+    
+      const headers =
+        collectVerificationHeaders(
+          request.headers,
+          options.headers
+        );
+    
+      const shouldValidateDigest =
+        options.validateContentDigest ??
+        this.validateContentDigest;
+    
+      const digestCheck =
+        shouldValidateDigest
+          ? await verifyRequestContentDigest(
+              request
+            )
+          : {
+              present: Boolean(
+                request.headers.get(
+                  "content-digest"
+                )
+              ),
+              valid: null,
+              contentDigest:
+                request.headers.get(
+                  "content-digest"
+                ),
+            };
+    
+      if (
+        digestCheck.present &&
+        digestCheck.valid === false
+      ) {
+        return {
+          verified: false,
+          allowed: false,
+          reason:
+            "content_digest_mismatch",
+          detail:
+            "Content-Digest does not match the actual request body.",
+          checks: {
+            signature: "unknown",
+            timestamp: "unknown",
+            replay: "unknown",
+            provider: "unknown",
+            policy: "blocked",
+            contentDigest: "invalid",
+          },
+          request: {
+            method: request.method,
+            path: new URL(
+              targetUrl
+            ).pathname,
+            action:
+              options.action ?? null,
+            tool: options.tool ?? null,
+            expectedTag:
+              options.expectedTag ?? null,
+          },
+        };
+      }
+    
+      const userToken =
+        options.userToken ??
+        (
+          options.forwardAuthorization ===
+          false
+            ? null
+            : extractBearerToken(
+                request.headers.get(
+                  "authorization"
+                )
+              )
+        );
+    
       return this.verifyPayload({
         url: targetUrl,
         method: request.method,
         headers,
-        expectedTag: options.expectedTag ?? null,
-        action: options.action ?? null,
-        tool: options.tool ?? null,
-        userAgent: request.headers.get("user-agent"),
+    
+        bodyDigest:
+          digestCheck.contentDigest,
+    
+        expectedTag:
+          options.expectedTag ?? null,
+    
+        action:
+          options.action ?? null,
+    
+        tool:
+          options.tool ?? null,
+    
+        userAgent:
+          request.headers.get(
+            "user-agent"
+          ),
+    
+        userToken,
       });
     }
-  
+
     async verifyPayload(
       options: VerifyPayloadOptions
     ): Promise<AgentBouncerVerificationResult> {
       const headers = headersToObject(options.headers);
-  
+      const optionHeaders = new Headers(options.headers);
       const payload = {
         url: options.url,
         method: options.method ?? "GET",
         headers,
-  
+      
+        bodyDigest:
+          options.bodyDigest ??
+          optionHeaders.get(
+            "content-digest"
+          ),
+      
         signature:
           options.signature ??
-          new Headers(options.headers).get("signature"),
-  
+          optionHeaders.get(
+            "signature"
+          ),
+      
         signatureInput:
           options.signatureInput ??
-          new Headers(options.headers).get("signature-input"),
-  
+          optionHeaders.get(
+            "signature-input"
+          ),
+      
         signatureAgent:
           options.signatureAgent ??
-          new Headers(options.headers).get("signature-agent"),
-  
-        expectedTag: options.expectedTag ?? null,
-        action: options.action ?? null,
-        tool: options.tool ?? null,
-  
+          optionHeaders.get(
+            "signature-agent"
+          ),
+      
+        expectedTag:
+          options.expectedTag ?? null,
+      
+        action:
+          options.action ?? null,
+      
+        tool:
+          options.tool ?? null,
+      
         userAgent:
           options.userAgent ??
-          new Headers(options.headers).get("user-agent"),
+          optionHeaders.get(
+            "user-agent"
+          ),
       };
   
       const controller = new AbortController();
@@ -148,19 +272,42 @@ import {
       const timeout = setTimeout(() => {
         controller.abort();
       }, this.timeoutMs);
-  
+      const requestHeaders:
+      Record<string, string> = {
+        "content-type":
+          "application/json",
+    
+        accept:
+          "application/json",
+    
+        authorization:
+          `Bearer ${this.apiKey}`,
+    
+        "user-agent":
+          "@agentbouncer/sdk/0.2.0",
+      };
+    
+    const normalizedUserToken =
+      extractBearerToken(
+        options.userToken
+      );
+    
+    if (normalizedUserToken) {
+      requestHeaders[
+        "x-agent-user-token"
+      ] =
+        `Bearer ${normalizedUserToken}`;
+    }
       try {
-        const response = await this.fetchImplementation(
+        const response =
+        await this.fetchImplementation(
           this.verifyUrl,
           {
             method: "POST",
-            headers: {
-              "content-type": "application/json",
-              "accept": "application/json",
-              "authorization": `Bearer ${this.apiKey}`,
-              "user-agent": "@agentbouncer/sdk",
-            },
-            body: JSON.stringify(payload),
+            headers: requestHeaders,
+            body: JSON.stringify(
+              payload
+            ),
             signal: controller.signal,
             cache: "no-store",
           }

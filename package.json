@@ -1,55 +1,59 @@
 {
-    "name": "@agentbouncer/sdk",
-    "version": "0.1.1",
-    "description": "Official server-side SDK for AgentBouncer request verification",
-    "type": "module",
-    "main": "./dist/index.js",
-    "types": "./dist/index.d.ts",
-    "exports": {
-      ".": {
-        "types": "./dist/index.d.ts",
-        "import": "./dist/index.js"
-      }
-    },
-    "files": [
-      "dist",
-      "README.md",
-      "LICENSE"
-    ],
-    "sideEffects": false,
-    "scripts": {
-      "clean": "rm -rf dist",
-      "build": "npm run clean && tsc -p tsconfig.json",
-      "check": "tsc -p tsconfig.json --noEmit",
-      "prepublishOnly": "npm run build",
-      "pack:check": "npm pack --dry-run"
-    },
-    "keywords": [
-      "agentbouncer",
-      "mcp",
-      "ai-agent",
-      "http-message-signatures",
-      "web-bot-auth",
-      "RFC 9421",
-      "request-verification"
-    ],
-    "repository": {
-      "type": "git",
-      "url": "git+https://github.com/agentbouncer/agentbouncer-js.git"
-    },
-    "homepage": "https://agentbouncer.io",
-    "bugs": {
-      "url": "https://github.com/agentbouncer/agentbouncer-js/issues"
-    },
-    "engines": {
-      "node": ">=18"
-    },
-    "publishConfig": {
-      "access": "public"
-    },
-    "license": "MIT",
-    "devDependencies": {
-      "@types/node": "^22.0.0",
-      "typescript": "^5.7.0"
+  "name": "@agentbouncer/sdk",
+  "version": "0.2.0",
+  "description": "Official server-side SDK for signing and verifying AgentBouncer AI agent and MCP requests",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build": "npm run clean && tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "prepublishOnly": "npm run build",
+    "pack:check": "npm pack --dry-run"
+  },
+  "keywords": [
+    "agentbouncer",
+    "mcp",
+    "oauth",
+    "ai-agent",
+    "http-message-signatures",
+    "web-bot-auth",
+    "RFC 9421",
+    "request-verification"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/agentbouncer/agentbouncer-js.git"
+  },
+  "homepage": "https://agentbouncer.io",
+  "bugs": {
+    "url": "https://github.com/agentbouncer/agentbouncer-js/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "web-bot-auth": "^0.1.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
   }
+}

@@ -39,14 +39,21 @@ export type AgentBouncerVerificationResult = {
   checks?: AgentBouncerVerificationChecks;
 
   agent?: {
-    type?: "PROJECT_KEY" | "PROVIDER" | "UNKNOWN" | string;
+    type?:
+      | "PROJECT_KEY"
+      | "PROVIDER"
+      | "UNKNOWN"
+      | string;
+
     provider?: string | null;
     providerSlug?: string | null;
+
     projectKey?: {
       id: string;
       name?: string | null;
-      scopes?: unknown;
+      scopes?: string[];
     } | null;
+
     signatureAgent?: string | null;
     keyid?: string | null;
   } | null;
@@ -62,7 +69,7 @@ export type AgentBouncerVerificationResult = {
     trustScore?: number | null;
     abuseScore?: number | null;
     identityConfidence?: number | null;
-    securityPosture?: string | null;
+    securityPosture?: number | null;
   } | null;
 
   request?: {
@@ -76,9 +83,15 @@ export type AgentBouncerVerificationResult = {
 
   risk?: {
     score: number;
-    level: "low" | "medium" | "high" | "critical" | string;
+    level:
+      | "low"
+      | "medium"
+      | "high"
+      | "critical"
+      | string;
   };
-
+  oauth?: AgentBouncerOAuthResult;
+  hint?: AgentBouncerOAuthHint;
   policy?: {
     mode?: string;
     minTier?: string;
@@ -86,15 +99,15 @@ export type AgentBouncerVerificationResult = {
     requireKnownProvider?: boolean;
     requireTrusted?: boolean;
     wouldBlockReason?: string | null;
-    matchedRule?: AgentBouncerMatchedRule | null;
+    matchedRule?:
+      AgentBouncerMatchedRule | null;
     defaultEffectApplied?: boolean;
   };
-
+  missingSignedComponents?: string[];
   tag?: string | null;
   expectedTag?: string | null;
   trusted?: boolean;
   confidence?: number;
-
   [key: string]: unknown;
 };
 
@@ -104,6 +117,7 @@ export type AgentBouncerClientOptions = {
   publicOrigin?: string;
   timeoutMs?: number;
   fetch?: typeof globalThis.fetch;
+  validateContentDigest?: boolean;
 };
 
 export type VerifyRequestOptions = {
@@ -113,19 +127,45 @@ export type VerifyRequestOptions = {
   tool?: string | null;
   expectedTag?: string | null;
   headers?: HeadersInit;
+  userToken?: string | null;
+  forwardAuthorization?: boolean;
+  validateContentDigest?: boolean;
 };
 
 export type VerifyPayloadOptions = {
   url: string;
   method?: string;
   headers?: HeadersInit;
-
+  bodyDigest?: string | null;
   signature?: string | null;
   signatureInput?: string | null;
   signatureAgent?: string | null;
-
   expectedTag?: string | null;
   action?: string | null;
   tool?: string | null;
   userAgent?: string | null;
+  userToken?: string | null;
+};
+
+export type AgentBouncerOAuthStatus =
+  | "none"
+  | "valid"
+  | "invalid"
+  | "unknown_issuer"
+  | "malformed"
+  | string;
+
+export type AgentBouncerOAuthResult = {
+  status: AgentBouncerOAuthStatus;
+  authenticated: boolean;
+  sub: string | null;
+  issuer: string | null;
+  scopes: string[];
+  error: string | null;
+};
+
+export type AgentBouncerOAuthHint = {
+  type: "oauth_required";
+  requiredScopes: string[];
+  registeredIssuers: string[];
 };
